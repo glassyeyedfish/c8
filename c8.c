@@ -10,6 +10,8 @@
 
 #define FONT_DATA_SIZE (0x10 * 0x5)
 
+int flag_stepping = 0;
+
 unsigned short pc = 0x200;
 unsigned char ram[0x1000] = { 0 };
 unsigned char v_reg[0x10] = { 0 };
@@ -40,7 +42,8 @@ unsigned char font_data[FONT_DATA_SIZE] = {
 
 void
 run_rom(void) {
-        context_t ctx = { 0 };
+        int i;
+        sdl_context_t ctx = { 0 };
 
         /* Initialize everything. */
         SDL_Init(SDL_INIT_VIDEO);
@@ -59,20 +62,25 @@ run_rom(void) {
 
         ctx.window_should_close = 0;
 
+        for (i = 0; i < FONT_DATA_SIZE; i++) {
+                ram[i] = font_data[i];
+        }
+
 
         /* Main loop. */
         while (!ctx.window_should_close) {
-
                 /* Event handling. */
                 poll_events(&ctx);
 
-                if (is_key_pressed(&ctx, SDLK_SPACE)) {
-                        SDL_SetRenderDrawColor(ctx.renderer, 245, 0, 0, 255);
-                } else {
-                        SDL_SetRenderDrawColor(ctx.renderer, 0, 0, 0, 255);
+                if (flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) {
+                        printf("%x\n", ram[pc]);
+                        pc++;
+                } else if (!flag_stepping) {
+                        printf("%x\n", ram[pc]);
+                        pc++;
                 }
-                SDL_RenderClear(ctx.renderer);
 
+                SDL_RenderClear(ctx.renderer);
                 SDL_RenderPresent(ctx.renderer);
 
                 SDL_Delay(16);
@@ -114,6 +122,7 @@ void
 print_usage(void) {
         puts("Usage: c8 [OPTIONS...] [FILE]");
         putchar('\n');
+        puts("    -s    step through one instruction at a time");
         puts("    -h    print this list and exit");
         puts("    -V    print the version number and exit");
 }
@@ -130,7 +139,9 @@ main(int argc, char* argv[]) {
 
         /* Process CLI arguments. */
         for (i = 1; i < argc; i++) {
-                if (strcmp(argv[i], "-h") == 0) {
+                if (strcmp(argv[i], "-s") == 0) {
+                        flag_stepping = 1;
+                } else if (strcmp(argv[i], "-h") == 0) {
                         print_usage();
                         exit(EXIT_SUCCESS);
                 } else if (strcmp(argv[i], "-V") == 0) {

@@ -1,4 +1,4 @@
-CC = gcc
+CC = cc
 CFLAGS = -ansi -pedantic -Wall -Wextra -Werror -g
 LDFLAGS = -lSDL2
 

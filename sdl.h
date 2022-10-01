@@ -11,10 +11,10 @@ typedef struct {
         int window_should_close;
         SDL_KeyCode current_key_state[512];
         SDL_KeyCode previous_key_state[512];
-} context_t;
+} sdl_context_t;
 
-void poll_events(context_t* ctx);
-int is_key_down(context_t* ctx, SDL_KeyCode key);
-int is_key_pressed(context_t* ctx, SDL_KeyCode key);
+void poll_events(sdl_context_t* ctx);
+int is_key_down(sdl_context_t* ctx, SDL_KeyCode key);
+int is_key_pressed(sdl_context_t* ctx, SDL_KeyCode key);
 
 #endif

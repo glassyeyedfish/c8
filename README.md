@@ -1,2 +1,2 @@
-# chip-8
-Some Chip-8 stuff.
+# c8
+A Chip-8 interpreter written with SDL2 in C.
