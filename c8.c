@@ -67,7 +67,7 @@ run_rom(void) {
                 poll_events(&ctx);
 
                 if (is_key_pressed(&ctx, SDLK_SPACE)) {
-                        SDL_SetRenderDrawColor(ctx.renderer, 255, 0, 0, 255);
+                        SDL_SetRenderDrawColor(ctx.renderer, 245, 0, 0, 255);
                 } else {
                         SDL_SetRenderDrawColor(ctx.renderer, 0, 0, 0, 255);
                 }

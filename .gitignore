@@ -1,2 +1,8 @@
-build/
+# vscode
 .vscode/
+
+# binary
+c8
+
+# object files
+*.o
