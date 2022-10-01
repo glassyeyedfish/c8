@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 
+
 #define VERSION_STIRNG "0.1.0"
 
 #define FONT_DATA_SIZE (0x10 * 0x5)
@@ -38,12 +39,64 @@ unsigned char font_data[FONT_DATA_SIZE] = {
 
 void
 run_rom(void) {
-        int i;
-        for (i = 0x200; i < 0x208; i++) {
-                printf("%x\n", ram[i]);
+        SDL_Window* window;
+        SDL_Renderer* renderer;
+
+        int is_running = 1;
+
+        /* Initialize everything. */
+        SDL_Init(SDL_INIT_VIDEO);
+
+        window = SDL_CreateWindow(
+                "Chip-8 Emulator",
+                SDL_WINDOWPOS_CENTERED,
+                SDL_WINDOWPOS_CENTERED,
+                640,
+                320,
+                0
+        );
+
+        renderer = SDL_CreateRenderer(window, -1, 0);
+        SDL_RenderSetScale(renderer, 10.0, 10.0);
+
+
+        while (is_running) {
+                SDL_Event e;
+
+                while (SDL_PollEvent(&e)) {
+                        switch(e.type) {
+                        case SDL_WINDOWEVENT:
+                                switch(e.window.event) {
+                                case SDL_WINDOWEVENT_CLOSE:
+                                        is_running = 0;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+
+                        default:
+                                break;
+                        }
+                }
+
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderClear(renderer);
+
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                SDL_RenderDrawPoint(renderer, 2, 2);
+                
+                SDL_RenderPresent(renderer);
+
                 SDL_Delay(16);
         }
-        putchar('\n');
+
+
+        /* Clean up */
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+
+        SDL_Quit();
 }
 
 void
@@ -73,6 +126,9 @@ load_rom(char* filename) {
 void
 print_usage(void) {
         puts("Usage: c8 [OPTIONS...] [FILE]");
+        putchar('\n');
+        puts("    -h    print this list and exit");
+        puts("    -V    print the version number and exit");
 }
 
 
@@ -81,48 +137,25 @@ print_version(void) {
         printf("c8: v%s\n", VERSION_STIRNG);
 }
 
-void 
-print_help(void) {
-        print_usage();
-        putchar('\n');
-        puts("    -h    print this list and exit");
-        puts("    -V    print the version number and exit");
-}
-
 int
 main(int argc, char* argv[]) {
         int i;
-        char loaded_rom;
-
-        /* Set up SDL. */
-        SDL_Init(SDL_INIT_VIDEO);
-
-        /* Load font data. */
-        for (i = 0; i < FONT_DATA_SIZE; i++) {
-                ram[i] = font_data[i];
-        }
 
         /* Process CLI arguments. */
-        loaded_rom = 0;
-        for (i = 1; i < argc && !loaded_rom; i++) {
+        for (i = 1; i < argc; i++) {
                 if (strcmp(argv[i], "-h") == 0) {
-                        print_help();
+                        print_usage();
                         exit(EXIT_SUCCESS);
                 } else if (strcmp(argv[i], "-V") == 0) {
                         print_version();
                         exit(EXIT_SUCCESS);
                 } else {
                         load_rom(argv[i]);
-                        loaded_rom = 1;
+                        run_rom();
+                        exit(EXIT_SUCCESS);
                 }
         }
 
-        if (!loaded_rom) {
-                print_usage();
-                exit(EXIT_FAILURE);
-        }
-
-        run_rom();
-        
-        exit(EXIT_SUCCESS);
+        puts("Error: failed to parse arguments, use '-h' for usage");
+        exit(EXIT_FAILURE);
 }
