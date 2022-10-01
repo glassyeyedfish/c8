@@ -9,6 +9,11 @@
 
 #define FONT_DATA_SIZE (0x10 * 0x5)
 
+typedef struct {
+        SDL_Window* window;
+        SDL_Renderer* renderer;
+} context_t;
+
 unsigned short pc = 0x200;
 unsigned char ram[0x1000] = { 0 };
 unsigned char v_reg[0x10] = { 0 };
@@ -39,16 +44,14 @@ unsigned char font_data[FONT_DATA_SIZE] = {
 
 void
 run_rom(void) {
-        SDL_Window* window;
-        SDL_Renderer* renderer;
-
         int is_running = 1;
+        context_t ctx = { 0 };
 
         /* Initialize everything. */
         SDL_Init(SDL_INIT_VIDEO);
 
-        window = SDL_CreateWindow(
-                "Chip-8 Emulator",
+        ctx.window = SDL_CreateWindow(
+                "Chip-8",
                 SDL_WINDOWPOS_CENTERED,
                 SDL_WINDOWPOS_CENTERED,
                 640,
@@ -56,11 +59,14 @@ run_rom(void) {
                 0
         );
 
-        renderer = SDL_CreateRenderer(window, -1, 0);
-        SDL_RenderSetScale(renderer, 10.0, 10.0);
+        ctx.renderer = SDL_CreateRenderer(ctx.window, -1, 0);
+        SDL_RenderSetScale(ctx.renderer, 10.0, 10.0);
 
 
+        /* Main loop. */
         while (is_running) {
+
+                /* Event handling. */
                 SDL_Event e;
 
                 while (SDL_PollEvent(&e)) {
@@ -80,21 +86,21 @@ run_rom(void) {
                         }
                 }
 
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                SDL_RenderClear(renderer);
+                SDL_SetRenderDrawColor(ctx.renderer, 0, 0, 0, 255);
+                SDL_RenderClear(ctx.renderer);
 
-                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-                SDL_RenderDrawPoint(renderer, 2, 2);
+                SDL_SetRenderDrawColor(ctx.renderer, 255, 255, 255, 255);
+                SDL_RenderDrawPoint(ctx.renderer, 2, 2);
                 
-                SDL_RenderPresent(renderer);
+                SDL_RenderPresent(ctx.renderer);
 
                 SDL_Delay(16);
         }
 
 
         /* Clean up */
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
+        SDL_DestroyRenderer(ctx.renderer);
+        SDL_DestroyWindow(ctx.window);
 
         SDL_Quit();
 }
