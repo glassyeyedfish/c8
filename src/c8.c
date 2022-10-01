@@ -66,12 +66,13 @@ run_rom(void) {
                 /* Event handling. */
                 poll_events(&ctx);
 
-                SDL_SetRenderDrawColor(ctx.renderer, 0, 0, 0, 255);
+                if (is_key_pressed(&ctx, SDLK_SPACE)) {
+                        SDL_SetRenderDrawColor(ctx.renderer, 255, 0, 0, 255);
+                } else {
+                        SDL_SetRenderDrawColor(ctx.renderer, 0, 0, 0, 255);
+                }
                 SDL_RenderClear(ctx.renderer);
 
-                SDL_SetRenderDrawColor(ctx.renderer, 255, 255, 255, 255);
-                SDL_RenderDrawPoint(ctx.renderer, 2, 2);
-                
                 SDL_RenderPresent(ctx.renderer);
 
                 SDL_Delay(16);

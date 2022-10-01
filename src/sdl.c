@@ -7,6 +7,10 @@ poll_events(context_t* ctx) {
         int i;
         SDL_Event e;
 
+        for (i = 0; i < KEYCODE_MAX; i++) {
+                ctx->previous_key_state[i] = ctx->current_key_state[i];
+        }
+
         while (SDL_PollEvent(&e)) {
                 switch(e.type) {
                 case SDL_WINDOWEVENT:
@@ -21,7 +25,7 @@ poll_events(context_t* ctx) {
 
                 case SDL_KEYDOWN:
                         for (i = 0; i < 512; i++) {
-                                if (e.key.keysym.sym % 1073741625 == i) {
+                                if (e.key.keysym.sym % KEYCODE_MOD == i) {
                                         ctx->current_key_state[i] = 1;
                                 }
                         }
@@ -29,8 +33,8 @@ poll_events(context_t* ctx) {
 
                 case SDL_KEYUP:
                         for (i = 0; i < 512; i++) {
-                                if (e.key.keysym.sym % 1073741625 == i) {
-                                        ctx->previous_key_state[i] = 0;
+                                if (e.key.keysym.sym % KEYCODE_MOD == i) {
+                                        ctx->current_key_state[i] = 0;
                                 }
                         }
                         break;
@@ -39,4 +43,15 @@ poll_events(context_t* ctx) {
                         break;
                 }
         }
+}
+
+int 
+is_key_down(context_t* ctx, SDL_KeyCode key) {
+        return ctx->current_key_state[key % KEYCODE_MOD];
+}
+
+int 
+is_key_pressed(context_t* ctx, SDL_KeyCode key) {
+        return ctx->current_key_state[key % KEYCODE_MOD] 
+                && !ctx->previous_key_state[key % KEYCODE_MOD];
 }
