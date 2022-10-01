@@ -4,15 +4,11 @@
 
 #include <SDL2/SDL.h>
 
+#include "sdl.h"
 
 #define VERSION_STIRNG "0.1.0"
 
 #define FONT_DATA_SIZE (0x10 * 0x5)
-
-typedef struct {
-        SDL_Window* window;
-        SDL_Renderer* renderer;
-} context_t;
 
 unsigned short pc = 0x200;
 unsigned char ram[0x1000] = { 0 };
@@ -44,7 +40,6 @@ unsigned char font_data[FONT_DATA_SIZE] = {
 
 void
 run_rom(void) {
-        int is_running = 1;
         context_t ctx = { 0 };
 
         /* Initialize everything. */
@@ -62,29 +57,14 @@ run_rom(void) {
         ctx.renderer = SDL_CreateRenderer(ctx.window, -1, 0);
         SDL_RenderSetScale(ctx.renderer, 10.0, 10.0);
 
+        ctx.window_should_close = 0;
+
 
         /* Main loop. */
-        while (is_running) {
+        while (!ctx.window_should_close) {
 
                 /* Event handling. */
-                SDL_Event e;
-
-                while (SDL_PollEvent(&e)) {
-                        switch(e.type) {
-                        case SDL_WINDOWEVENT:
-                                switch(e.window.event) {
-                                case SDL_WINDOWEVENT_CLOSE:
-                                        is_running = 0;
-                                        break;
-                                default:
-                                        break;
-                                }
-                                break;
-
-                        default:
-                                break;
-                        }
-                }
+                poll_events(&ctx);
 
                 SDL_SetRenderDrawColor(ctx.renderer, 0, 0, 0, 255);
                 SDL_RenderClear(ctx.renderer);
