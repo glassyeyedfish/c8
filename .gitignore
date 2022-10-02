@@ -2,7 +2,9 @@
 .vscode/
 
 # binary
+bin/
 c8
 
 # object files
+build/
 *.o
