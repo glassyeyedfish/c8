@@ -41,14 +41,12 @@ unsigned char font_data[FONT_DATA_SIZE] = {
 };
 
 void
-run_rom(void) {
+init_rom(sdl_context_t* ctx) {
         int i;
-        sdl_context_t ctx = { 0 };
 
-        /* Initialize everything. */
         SDL_Init(SDL_INIT_VIDEO);
 
-        ctx.window = SDL_CreateWindow(
+        ctx->window = SDL_CreateWindow(
                 "Chip-8",
                 SDL_WINDOWPOS_CENTERED,
                 SDL_WINDOWPOS_CENTERED,
@@ -57,14 +55,22 @@ run_rom(void) {
                 0
         );
 
-        ctx.renderer = SDL_CreateRenderer(ctx.window, -1, 0);
-        SDL_RenderSetScale(ctx.renderer, 10.0, 10.0);
+        ctx->renderer = SDL_CreateRenderer(ctx->window, -1, 0);
+        SDL_RenderSetScale(ctx->renderer, 10.0, 10.0);
 
-        ctx.window_should_close = 0;
+        ctx->window_should_close = 0;
 
         for (i = 0; i < FONT_DATA_SIZE; i++) {
                 ram[i] = font_data[i];
         }
+}
+
+void
+run_rom(void) {
+        sdl_context_t ctx = { 0 };
+
+        /* Initialize everything. */
+        init_rom(&ctx);
 
 
         /* Main loop. */
@@ -72,12 +78,10 @@ run_rom(void) {
                 /* Event handling. */
                 poll_events(&ctx);
 
-                if (flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) {
+                /* Implements the step-through functionality. */
+                if ((flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) || !flag_stepping) {
                         printf("%x\n", ram[pc]);
-                        pc++;
-                } else if (!flag_stepping) {
-                        printf("%x\n", ram[pc]);
-                        pc++;
+                        pc += 2;
                 }
 
                 SDL_RenderClear(ctx.renderer);
