@@ -10,6 +10,8 @@
 
 #define FONT_DATA_SIZE (16 * 5)
 
+sdl_context_t ctx = { 0 };
+
 int flag_stepping = 0;
 
 unsigned short pc = 0x200;
@@ -41,23 +43,27 @@ unsigned char font_data[FONT_DATA_SIZE] = {
 };
 
 /* ROM functions */
-void init_rom(sdl_context_t* ctx);
+void init_rom(void);
 void run_rom(void);
 void load_rom(char* filename);
 
+/* Instruction */
+void eval_instruction(void);
+
 /* Debug printing functions */
 void print_instruction(unsigned int pc);
+void print_v_registers(void);
 
 /* CLI arg print functions */
 void print_usage(void);
 void print_version(void);
 
-void init_rom(sdl_context_t* ctx) {
+void init_rom() {
         int i;
 
         SDL_Init(SDL_INIT_VIDEO);
 
-        ctx->window = SDL_CreateWindow(
+        ctx.window = SDL_CreateWindow(
                 "Chip-8",
                 SDL_WINDOWPOS_CENTERED,
                 SDL_WINDOWPOS_CENTERED,
@@ -66,10 +72,10 @@ void init_rom(sdl_context_t* ctx) {
                 0
         );
 
-        ctx->renderer = SDL_CreateRenderer(ctx->window, -1, 0);
-        SDL_RenderSetScale(ctx->renderer, 10.0, 10.0);
+        ctx.renderer = SDL_CreateRenderer(ctx.window, -1, 0);
+        SDL_RenderSetScale(ctx.renderer, 10.0, 10.0);
 
-        ctx->window_should_close = 0;
+        ctx.window_should_close = 0;
 
         for (i = 0; i < FONT_DATA_SIZE; i++) {
                 ram[i] = font_data[i];
@@ -77,10 +83,9 @@ void init_rom(sdl_context_t* ctx) {
 }
 
 void run_rom(void) {
-        sdl_context_t ctx = { 0 };
 
         /* Initialize everything. */
-        init_rom(&ctx);
+        init_rom();
 
 
         /* Main loop. */
@@ -88,63 +93,10 @@ void run_rom(void) {
                 /* Event handling. */
                 poll_events(&ctx);
 
-                /* Implements the step-through functionality. */
-                if ((flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) || !flag_stepping) {
-
-                        /* Seperate instruction into important pieces. */
-                        unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
-                        unsigned int addr = inst & 0x0FFF;
-                        unsigned int byte = inst & 0x00FF;
-                        unsigned int w = (inst & 0xF000) >> 12;
-                        unsigned int x = (inst & 0x0F00) >> 8;
-                        unsigned int y = (inst & 0x00F0) >> 4;
-                        unsigned int z = inst & 0x000F;
-
-                        /* Switch over 'w', which represents the highest 
-                         * nibble. */
-                        switch(w) {
-                        case 0x0:
-                                break;
-                        case 0x1:
-                                break;
-                        case 0x2:
-                                break;
-                        case 0x3:
-                                break;
-                        case 0x4:
-                                break;
-                        case 0x5:
-                                break;
-                        case 0x6:
-                                break;
-                        case 0x7:
-                                break;
-                        case 0x8:
-                                break;
-                        case 0x9:
-                                break;
-                        case 0xA:
-                                break;
-                        case 0xB:
-                                break;
-                        case 0xC:
-                                break;
-                        case 0xD:
-                                break;
-                        case 0xE:
-                                break;
-                        case 0xF:
-                                break;
-                        default:
-                                break;
-                        }
-
-                        printf("%x\n", addr);
-                        pc += 2;
-                }
+                eval_instruction();
 
                 if (pc >= 0x1000) {
-                        puts("Error: program counter exceeds allocated memory.");
+                        puts("Error: program counter above allocated memory.");
                         exit(EXIT_FAILURE);
                 }
 
@@ -162,22 +114,158 @@ void run_rom(void) {
         SDL_Quit();
 }
 
+void
+eval_instruction(void) {
+        /* Implements the step-through functionality. */
+        if (
+                (flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) 
+                || !flag_stepping
+        ) {
+
+                /* Seperate instruction into important pieces. */
+                unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
+                unsigned int addr = inst & 0x0FFF;
+                unsigned int byte = inst & 0x00FF;
+                unsigned int w = (inst & 0xF000) >> 12;
+                unsigned int x = (inst & 0x0F00) >> 8;
+                unsigned int y = (inst & 0x00F0) >> 4;
+                unsigned int z = inst & 0x000F;
+
+                /* Switch over specific nibbles to determine which 
+                        * instruction should be executed, then exec it. */
+                switch(w) {
+
+                case 0x0:
+                        break;
+
+                case 0x1:
+                        break;
+                        
+                case 0x2:
+                        break;
+
+                case 0x3:
+                        break;
+
+                case 0x4:
+                        break;
+
+                case 0x5:
+                        break;
+
+                /* Vx = byte */
+                case 0x6:
+                        v_reg[x] = byte;
+                        break;
+
+                /* Vx = Vx + kk */
+                case 0x7:
+                        v_reg[x] += byte;
+                        break;
+
+                case 0x8:
+                        switch(z) {
+
+                        /* Vx = Vy */
+                        case 0x0:
+                                v_reg[x] = v_reg[y];
+                                break;
+
+                        /* Vx = Vx | Vy */
+                        case 0x1:
+                                v_reg[x] = v_reg[x] | v_reg[y];
+                                break;
+
+                        /* Vx = Vx & Vy */
+                        case 0x2:
+                                v_reg[x] = v_reg[x] & v_reg[y];
+                                break;
+
+                        /* Vx = Vx ^ Vy */
+                        case 0x3:
+                                v_reg[x] = v_reg[x] ^ v_reg[y];
+                                break;
+
+                        case 0x4:
+                                unsigned char temp = v_reg[x];
+                                v_reg[x] = v_reg[x] + v_reg[y];
+                                v_reg[0xF] = 
+                                        v_reg[x] < temp || v_reg[x] < v_reg[y]
+                                        ? 1
+                                        : 0;
+                                break;
+
+                        case 0x5:
+                                break;
+
+                        case 0x6:
+                                break;
+
+                        case 0x7:
+                                break;
+
+                        case 0xE:
+                                break;
+
+                        default:
+                                break;
+                        }
+                        break;
+
+                case 0x9:
+                        break;
+
+                case 0xA:
+                        break;
+
+                case 0xB:
+                        break;
+
+                case 0xC:
+                        break;
+
+                case 0xD:
+                        break;
+
+                case 0xE:
+                        break;
+
+                case 0xF:
+                        break;
+
+                default:
+                        break;
+                }
+
+                print_instruction(pc);
+                print_v_registers();
+                pc += 2;
+        }
+}
+
 /* Takes a file path and trie to load the bytes into the virtual ram. Prints 
  * an error and exits if the file doesn't exsist of if the file it too big to 
  * be loaded. */
 void load_rom(char* filename) {
         char c;
-        int i;
+        long i;
+
         FILE* fp;
+        long size;
 
         fp = fopen(filename, "r");
         if(fp == NULL) {
                 printf("Error: Could not load '%s'\n", filename);
                 exit(EXIT_FAILURE);
         }
+
+        fseek(fp, 0, SEEK_END);
+        size = ftell(fp);
+        rewind(fp);
+
         c = fgetc(fp);
         i = 0;
-        while (c != EOF) {
+        while (i < size) {
                 if (0x200 + i >= 0x1000) {
                         puts("Error: ROM too large");
                         exit(EXIT_FAILURE);
@@ -196,6 +284,15 @@ void print_instruction(unsigned int pc) {
                 }
                 printf("%x", ram[i]);
         }
+        putchar('\n');
+}
+
+void print_v_registers(void) {
+        int i;
+        for (i = 0; i < 16; i++) {
+                printf("V%x = %x ", i, v_reg[i]);
+        }
+        putchar('\n');
 }
 
 void print_usage(void) {
