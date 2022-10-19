@@ -93,7 +93,13 @@ void run_rom(void) {
                 /* Event handling. */
                 poll_events(&ctx);
 
-                eval_instruction();
+                /* Implements the step-through functionality. */
+                if (
+                        (flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) 
+                        || !flag_stepping
+                ) {
+                        eval_instruction();
+                }
 
                 if (pc >= 0x1000) {
                         puts("Error: program counter above allocated memory.");
@@ -116,131 +122,134 @@ void run_rom(void) {
 
 void
 eval_instruction(void) {
-        /* Implements the step-through functionality. */
-        if (
-                (flag_stepping && is_key_pressed(&ctx, SDLK_SPACE)) 
-                || !flag_stepping
-        ) {
+        /* Seperate instruction into important pieces. */
+        unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
+        unsigned int addr = inst & 0x0FFF;
+        unsigned int byte = inst & 0x00FF;
+        unsigned int w = (inst & 0xF000) >> 12;
+        unsigned int x = (inst & 0x0F00) >> 8;
+        unsigned int y = (inst & 0x00F0) >> 4;
+        unsigned int z = inst & 0x000F;
 
-                /* Seperate instruction into important pieces. */
-                unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
-                unsigned int addr = inst & 0x0FFF;
-                unsigned int byte = inst & 0x00FF;
-                unsigned int w = (inst & 0xF000) >> 12;
-                unsigned int x = (inst & 0x0F00) >> 8;
-                unsigned int y = (inst & 0x00F0) >> 4;
-                unsigned int z = inst & 0x000F;
+        /* Switch over specific nibbles to determine which 
+                * instruction should be executed, then exec it. */
+        switch(w) {
 
-                /* Switch over specific nibbles to determine which 
-                        * instruction should be executed, then exec it. */
-                switch(w) {
+        case 0x0:
+                break;
 
+        case 0x1:
+                break;
+                
+        case 0x2:
+                break;
+
+        case 0x3:
+                break;
+
+        case 0x4:
+                break;
+
+        case 0x5:
+                break;
+
+        /* Vx = byte */
+        case 0x6:
+                v_reg[x] = byte;
+                break;
+
+        /* Vx = Vx + kk */
+        case 0x7:
+                v_reg[x] += byte;
+                break;
+
+        case 0x8:
+                switch(z) {
+
+                /* Vx = Vy */
                 case 0x0:
+                        v_reg[x] = v_reg[y];
                         break;
 
+                /* Vx = Vx | Vy */
                 case 0x1:
+                        v_reg[x] = v_reg[x] | v_reg[y];
                         break;
-                        
+
+                /* Vx = Vx & Vy */
                 case 0x2:
+                        v_reg[x] = v_reg[x] & v_reg[y];
                         break;
 
+                /* Vx = Vx ^ Vy */
                 case 0x3:
+                        v_reg[x] = v_reg[x] ^ v_reg[y];
                         break;
 
+                /* Vx = Vx + Vy, VF = carry */
                 case 0x4:
+                        unsigned char temp = v_reg[x];
+                        v_reg[x] = v_reg[x] + v_reg[y];
+                        v_reg[0xF] = v_reg[x] < temp || v_reg[x] < v_reg[y] ? 1 : 0;
                         break;
 
+                /* Vx = Vx - Vy, VF = !overflow */
                 case 0x5:
+                        v_reg[0xF] = v_reg[x] > v_reg[y] ? 1 : 0;
+                        v_reg[x] = v_reg[x] - v_reg[y];
                         break;
 
-                /* Vx = byte */
+                /* Vx = Vy >> 1, VF = bottom bit Vy */
                 case 0x6:
-                        v_reg[x] = byte;
+                        v_reg[0xF] = (v_reg[y] & 0x1) == 0x1 ? 1 : 0;
+                        v_reg[x] = v_reg[y] >> 1;
                         break;
 
-                /* Vx = Vx + kk */
+                /* Vx = Vy - Vx, VF = !overflow */
                 case 0x7:
-                        v_reg[x] += byte;
+                        v_reg[0xF] = v_reg[y] > v_reg[x] ? 1 : 0;
+                        v_reg[x] = v_reg[y] - v_reg[x];
                         break;
 
-                case 0x8:
-                        switch(z) {
-
-                        /* Vx = Vy */
-                        case 0x0:
-                                v_reg[x] = v_reg[y];
-                                break;
-
-                        /* Vx = Vx | Vy */
-                        case 0x1:
-                                v_reg[x] = v_reg[x] | v_reg[y];
-                                break;
-
-                        /* Vx = Vx & Vy */
-                        case 0x2:
-                                v_reg[x] = v_reg[x] & v_reg[y];
-                                break;
-
-                        /* Vx = Vx ^ Vy */
-                        case 0x3:
-                                v_reg[x] = v_reg[x] ^ v_reg[y];
-                                break;
-
-                        case 0x4:
-                                unsigned char temp = v_reg[x];
-                                v_reg[x] = v_reg[x] + v_reg[y];
-                                v_reg[0xF] = 
-                                        v_reg[x] < temp || v_reg[x] < v_reg[y]
-                                        ? 1
-                                        : 0;
-                                break;
-
-                        case 0x5:
-                                break;
-
-                        case 0x6:
-                                break;
-
-                        case 0x7:
-                                break;
-
-                        case 0xE:
-                                break;
-
-                        default:
-                                break;
-                        }
-                        break;
-
-                case 0x9:
-                        break;
-
-                case 0xA:
-                        break;
-
-                case 0xB:
-                        break;
-
-                case 0xC:
-                        break;
-
-                case 0xD:
-                        break;
-
+                /* Vx = Vy << 1, VF = top bit Vy */
                 case 0xE:
-                        break;
-
-                case 0xF:
+                        v_reg[0xF] = (v_reg[y] & 0x80) == 0x80 ? 1 : 0;
+                        v_reg[x] = v_reg[y] << 1;
                         break;
 
                 default:
                         break;
                 }
+                break;
 
-                print_instruction(pc);
-                print_v_registers();
-                pc += 2;
+        case 0x9:
+                break;
+
+        case 0xA:
+                break;
+
+        case 0xB:
+                break;
+
+        case 0xC:
+                break;
+
+        case 0xD:
+                break;
+
+        case 0xE:
+                break;
+
+        case 0xF:
+                break;
+
+        default:
+                break;
         }
+
+        print_instruction(pc);
+        print_v_registers();
+        pc += 2;
 }
 
 /* Takes a file path and trie to load the bytes into the virtual ram. Prints 
