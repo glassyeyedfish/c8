@@ -188,9 +188,8 @@ eval_instruction(void) {
 
                 /* Vx = Vx + Vy, VF = carry */
                 case 0x4:
-                        unsigned char temp = v_reg[x];
+                        v_reg[0xF] = v_reg[x] + v_reg[y] > 0xFF ? 1 : 0;
                         v_reg[x] = v_reg[x] + v_reg[y];
-                        v_reg[0xF] = v_reg[x] < temp || v_reg[x] < v_reg[y] ? 1 : 0;
                         break;
 
                 /* Vx = Vx - Vy, VF = !overflow */
