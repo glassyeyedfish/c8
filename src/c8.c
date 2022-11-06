@@ -6,9 +6,12 @@
 
 #include "sdl.h"
 
-#define VERSION_STIRNG "0.1.0"
+#define C8_VERSION_STIRNG "0.1.0"
 
-#define FONT_DATA_SIZE (16 * 5)
+#define C8_FONT_DATA_SIZE (16 * 5)
+#define C8_DISPLAY_SIZE (64 * 32)
+
+#define C8_MAX_CALL_STACK (0x100)
 
 sdl_context_t ctx = { 0 };
 
@@ -16,14 +19,19 @@ int flag_stepping = 0;
 
 unsigned short pc = 0x200;
 unsigned char ram[0x1000] = { 0 };
+
 unsigned char v_reg[16] = { 0 };
 unsigned short i_reg = 0;
-unsigned char call_stack[0x100] = { 0 };
+
+unsigned char sp = 0;
+unsigned char call_stack[C8_MAX_CALL_STACK] = { 0 };
+
 unsigned char delay_timer = 0;
 unsigned char sound_timer = 0;
-unsigned long display[32] = { 0 };
 
-unsigned char font_data[FONT_DATA_SIZE] = {
+unsigned char display[C8_DISPLAY_SIZE] = { 0 };
+
+unsigned char font_data[C8_FONT_DATA_SIZE] = {
         0xF0, 0x90, 0x90, 0x90, 0xF0,
         0x20, 0x60, 0x20, 0x20, 0x70,
         0xF0, 0x10, 0xF0, 0x80, 0xF0,
@@ -77,7 +85,7 @@ void init_rom() {
 
         ctx.window_should_close = 0;
 
-        for (i = 0; i < FONT_DATA_SIZE; i++) {
+        for (i = 0; i < C8_FONT_DATA_SIZE; i++) {
                 ram[i] = font_data[i];
         }
 }
@@ -132,25 +140,56 @@ eval_instruction(void) {
         unsigned int z = inst & 0x000F;
 
         /* Switch over specific nibbles to determine which 
-                * instruction should be executed, then exec it. */
+         * instruction should be executed, then exec it. */
         switch(w) {
 
         case 0x0:
+                /* Clear screen */
+                if (addr = 0x0E0) {
+                        int i;
+                        for (i = 0; i < C8_DISPLAY_SIZE; i++) {
+                                display[i] = 0;
+                        }
+                /* return from subroutine */
+                } else if (addr = 0x0EE) {
+                        if (sp <= 0) {
+                                puts("Error: stack underflow");
+                                exit(EXIT_FAILURE);
+                        }
+                        pc = call_stack[sp];
+                        sp--;
+                }
                 break;
 
+        /* jump to addr */
         case 0x1:
+                pc = addr - 2;
                 break;
                 
+        /* call subroutine at addr */
         case 0x2:
+                if (sp >= C8_MAX_CALL_STACK) {
+                        puts("Error: stack overflow");
+                        exit(EXIT_FAILURE);
+                }
+                call_stack[sp] = pc;
+                sp++;
+                pc = addr - 2;
                 break;
 
+        /* skip if Vx = byte */
         case 0x3:
+                if (v_reg[x] == byte) pc += 2;
                 break;
 
+        /* skip if Vx != byte */
         case 0x4:
+                if (v_reg[x] != byte) pc += 2;
                 break;
 
+        /* skip if Vx == Vy */
         case 0x5:
+                if (v_reg[x] == v_reg[y]) pc += 2;
                 break;
 
         /* Vx = byte */
@@ -158,7 +197,7 @@ eval_instruction(void) {
                 v_reg[x] = byte;
                 break;
 
-        /* Vx = Vx + kk */
+        /* Vx = Vx + byte */
         case 0x7:
                 v_reg[x] += byte;
                 break;
@@ -221,7 +260,9 @@ eval_instruction(void) {
                 }
                 break;
 
+        /* skip if Vx != Vy */
         case 0x9:
+                if (v_reg[x] != v_reg[y]) pc += 2;
                 break;
 
         case 0xA:
@@ -313,7 +354,7 @@ void print_usage(void) {
 
 
 void print_version(void) {
-        printf("c8: v%s\n", VERSION_STIRNG);
+        printf("c8: v%s\n", C8_VERSION_STIRNG);
 }
 
 int main(int argc, char* argv[]) {
