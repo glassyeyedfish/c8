@@ -23,7 +23,7 @@ unsigned char ram[0x1000] = { 0 };
 unsigned char v_reg[16] = { 0 };
 unsigned short i_reg = 0;
 
-unsigned char sp = 0;
+unsigned short sp = 0;
 unsigned char call_stack[C8_MAX_CALL_STACK] = { 0 };
 
 unsigned char delay_timer = 0;
@@ -59,6 +59,7 @@ void load_rom(char* filename);
 void eval_instruction(void);
 
 /* Debug printing functions */
+void print_display(void);
 void print_instruction(unsigned int pc);
 void print_v_registers(void);
 
@@ -91,10 +92,10 @@ void init_rom() {
 }
 
 void run_rom(void) {
+        int i;
 
         /* Initialize everything. */
         init_rom();
-
 
         /* Main loop. */
         while (!ctx.window_should_close) {
@@ -114,7 +115,13 @@ void run_rom(void) {
                         exit(EXIT_FAILURE);
                 }
 
+                /* Update diplay. */
                 SDL_RenderClear(ctx.renderer);
+                for (i = 0; i < C8_DISPLAY_SIZE; i++) {
+                        unsigned int color = display[i] != 0 ? 255 : 0;
+                        SDL_SetRenderDrawColor(ctx.renderer, color, color, color, 255);
+                        SDL_RenderDrawPoint(ctx.renderer, i % 64, (int) i / 64);
+                }
                 SDL_RenderPresent(ctx.renderer);
 
                 SDL_Delay(16);
@@ -130,6 +137,8 @@ void run_rom(void) {
 
 void
 eval_instruction(void) {
+        unsigned int row, col;
+
         /* Seperate instruction into important pieces. */
         unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
         unsigned int addr = inst & 0x0FFF;
@@ -145,13 +154,13 @@ eval_instruction(void) {
 
         case 0x0:
                 /* Clear screen */
-                if (addr = 0x0E0) {
+                if (addr == 0x0E0) {
                         int i;
                         for (i = 0; i < C8_DISPLAY_SIZE; i++) {
                                 display[i] = 0;
                         }
                 /* return from subroutine */
-                } else if (addr = 0x0EE) {
+                } else if (addr == 0x0EE) {
                         if (sp <= 0) {
                                 puts("Error: stack underflow");
                                 exit(EXIT_FAILURE);
@@ -265,16 +274,39 @@ eval_instruction(void) {
                 if (v_reg[x] != v_reg[y]) pc += 2;
                 break;
 
+        /* I = addr */
         case 0xA:
+                i_reg = addr;
                 break;
 
+        /* jump to V0 + addr */
         case 0xB:
+                pc = v_reg[0] + addr - 2;
+                if (pc + 2 >= 0x1000) {
+                        puts("Error: program counter overflow");
+                        exit(EXIT_FAILURE);
+                }
                 break;
 
+        /* Vx = byte & rng */
         case 0xC:
+                v_reg[x] = byte & (rand() % 256);
                 break;
 
+        /* Reads 'z' byte of memory starting from I, draws sprite to 
+         * (Vx, Vy) and wraps around screen. VF = collision ? 1 : 0 */
         case 0xD:
+                for (row = 0; row < z; row++) {
+                        /* The current row of the sprite to be drawn */
+                        unsigned char sprite_row = ram[i_reg + row];
+                        for (col = 0; col < 8; col++) {
+                                /* Get the coords of the pixel, and xor the
+                                 * pixel data from sprite_row onto display. */
+                                int coord = ((v_reg[y] + row) * 64) + v_reg[x] + (7 - col);
+                                display[coord] = display[coord] != (sprite_row % 2) ? 1 : 0;
+                                sprite_row = sprite_row >> 1;
+                        }
+                }
                 break;
 
         case 0xE:
@@ -287,8 +319,10 @@ eval_instruction(void) {
                 break;
         }
 
-        print_instruction(pc);
+        /* print_instruction(pc);
         print_v_registers();
+        print_display(); */
+
         pc += 2;
 }
 
@@ -325,8 +359,21 @@ void load_rom(char* filename) {
         }
 }
 
+void print_display() {
+        int i;
+        printf("dis:\t");
+        for (i = 0; i < C8_DISPLAY_SIZE; i++) {
+                putchar(display[i] ? '#' : '.');
+                if (i % 64 == 63) { 
+                        putchar('\n');
+                        if (i != C8_DISPLAY_SIZE - 1) putchar('\t');
+                }
+        }
+}
+
 void print_instruction(unsigned int pc) {
         unsigned int i;
+        printf("in:\t");
         for (i = pc; i <= pc + 1; i++) {
                 if (ram[i] < 0x10) {
                         putchar('0');
@@ -338,6 +385,7 @@ void print_instruction(unsigned int pc) {
 
 void print_v_registers(void) {
         int i;
+        printf("v:\t");
         for (i = 0; i < 16; i++) {
                 printf("V%x = %x ", i, v_reg[i]);
         }
