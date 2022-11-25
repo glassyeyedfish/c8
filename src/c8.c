@@ -95,6 +95,8 @@ void init_rom() {
 
 void run_rom(void) {
     int i;
+    unsigned long t = 0;
+    unsigned long dt = SDL_GetTicks64();
 
     /* Initialize everything. */
     init_rom();
@@ -103,6 +105,16 @@ void run_rom(void) {
     while (!ctx.window_should_close) {
         /* Event handling. */
         poll_events(&ctx);
+
+        /* 60Hz timer */
+        dt = SDL_GetTicks64() - dt;
+        t += dt;
+
+        if (t > 16) {
+            t = 0;
+            if (delay_timer > 0) delay_timer--;
+            if (sound_timer > 0) sound_timer--;
+        }
 
         /* Update keyboard data structure. */
         keyboard = 0x10;
@@ -166,7 +178,7 @@ void run_rom(void) {
         }
         SDL_RenderPresent(ctx.renderer);
 
-        SDL_Delay(1);
+        /* SDL_Delay(1); */
     }
 
 
@@ -190,6 +202,11 @@ eval_instruction(void) {
     unsigned int y = (inst & 0x00F0) >> 4;
     unsigned int z = inst & 0x000F;
 
+    print_instruction(pc);
+
+    /* Increment program counter */
+    pc += 2;
+
     /* Switch over specific nibbles to determine which 
      * instruction should be executed, then exec it. */
     switch(w) {
@@ -207,14 +224,13 @@ eval_instruction(void) {
                 puts("Error: stack underflow");
                 exit(EXIT_FAILURE);
             }
-            pc = call_stack[sp];
-            sp--;
+            pc = call_stack[sp--];
         }
         break;
 
     /* jump to addr */
     case 0x1:
-        pc = addr - 2;
+        pc = addr;
         break;
         
     /* call subroutine at addr */
@@ -223,9 +239,8 @@ eval_instruction(void) {
             puts("Error: stack overflow");
             exit(EXIT_FAILURE);
         }
-        call_stack[sp] = pc;
-        sp++;
-        pc = addr - 2;
+        call_stack[sp++] = pc;
+        pc = addr;
         break;
 
     /* skip if Vx = byte */
@@ -323,7 +338,7 @@ eval_instruction(void) {
 
     /* jump to V0 + addr */
     case 0xB:
-        pc = v_reg[0] + addr - 2;
+        pc = v_reg[0] + addr;
         if (pc + 2 >= 0x1000) {
             puts("Error: program counter overflow");
             exit(EXIT_FAILURE);
@@ -427,13 +442,11 @@ eval_instruction(void) {
         break;
     }
 
-    print_instruction(pc);
     print_v_registers();
-    printf("RAM @ [0x%x]: 0x%x\n", 0x100, ram[0x100]);
+    /*printf("RAM @ [0x%x]: 0x%x\n", 0x100, ram[0x100]);
     printf("RAM @ [0x%x]: 0x%x\n", 0x101, ram[0x101]);
-    printf("RAM @ [0x%x]: 0x%x\n", 0x102, ram[0x102]);
+    printf("RAM @ [0x%x]: 0x%x\n", 0x102, ram[0x102]); */
 
-    pc += 2;
 }
 
 /* Takes a file path and trie to load the bytes into the virtual ram. Prints 
