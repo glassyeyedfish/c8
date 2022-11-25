@@ -179,7 +179,7 @@ void run_rom(void) {
 
 void
 eval_instruction(void) {
-    unsigned int row, col;
+    unsigned int row, col, i;
 
     /* Seperate instruction into important pieces. */
     unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
@@ -352,6 +352,19 @@ eval_instruction(void) {
         break;
 
     case 0xE:
+        switch (byte) {
+
+        case 0x9E:
+            if (keyboard != 0x10 && v_reg[x] == keyboard) pc += 2;
+            break;
+
+        case 0xA1:
+            if (keyboard != 0x10 && v_reg[x] != keyboard) pc += 2;
+            break;
+
+        default:
+            break;
+        }
         break;
 
     case 0xF:
@@ -385,9 +398,17 @@ eval_instruction(void) {
             break;
 
         case 0x55:
+            for (i = 0; i <= x; i++) {
+                ram[i_reg + i] = v_reg[i];
+                i_reg += x + 1;
+            }
             break;
 
         case 0x65:
+            for (i = 0; i <= x; i++) {
+                v_reg[i] = ram[i_reg + i];
+                i_reg += x + 1;
+            }
             break;
 
         default:
