@@ -179,7 +179,7 @@ void run_rom(void) {
 
 void
 eval_instruction(void) {
-    unsigned int row, col, i;
+    unsigned int i, j;
 
     /* Seperate instruction into important pieces. */
     unsigned int inst = (ram[pc] << 8) | ram[pc + 1];
@@ -338,15 +338,15 @@ eval_instruction(void) {
     /* Reads 'z' byte of memory starting from I, draws sprite to 
      * (Vx, Vy) and wraps around screen. VF = collision ? 1 : 0 */
     case 0xD:
-        for (row = 0; row < z; row++) {
-            /* The current row of the sprite to be drawn */
-            unsigned char sprite_row = ram[i_reg + row];
-            for (col = 0; col < 8; col++) {
+        for (i = 0; i < z; i++) {
+            /* The current i of the sprite to be drawn */
+            unsigned char sprite_i = ram[i_reg + i];
+            for (j = 0; j < 8; j++) {
                 /* Get the coords of the pixel, and xor the
-                 * pixel data from sprite_row onto display. */
-                int coord = ((v_reg[y] + row) * 64) + v_reg[x] + (7 - col);
-                display[coord] = display[coord] != (sprite_row % 2) ? 1 : 0;
-                sprite_row = sprite_row >> 1;
+                 * pixel data from sprite_i onto display. */
+                int coord = ((v_reg[y] + i) * 64) + v_reg[x] + (7 - j);
+                display[coord] = display[coord] != (sprite_i % 2) ? 1 : 0;
+                sprite_i = sprite_i >> 1;
             }
         }
         break;
@@ -383,6 +383,7 @@ eval_instruction(void) {
             delay_timer = v_reg[x];
             break;
 
+        /* Sound timer */
         case 0x18:
             break;
 
@@ -395,6 +396,11 @@ eval_instruction(void) {
             break;
 
         case 0x33:
+            j = v_reg[x];
+            for (i = 0; i < 3; i++) {
+                ram[i_reg + (2 - i)] = j % 10;
+                j = (unsigned char) (j / 10);
+            }
             break;
 
         case 0x55:
@@ -423,6 +429,9 @@ eval_instruction(void) {
 
     print_instruction(pc);
     print_v_registers();
+    printf("RAM @ [0x%x]: 0x%x\n", 0x100, ram[0x100]);
+    printf("RAM @ [0x%x]: 0x%x\n", 0x101, ram[0x101]);
+    printf("RAM @ [0x%x]: 0x%x\n", 0x102, ram[0x102]);
 
     pc += 2;
 }
