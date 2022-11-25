@@ -31,7 +31,7 @@ unsigned char sound_timer = 0;
 
 unsigned char display[C8_DISPLAY_SIZE] = { 0 };
 
-unsigned short keyboard = 0;
+unsigned char keyboard = 0;
 
 unsigned char font_data[C8_FONT_DATA_SIZE] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0,
@@ -105,7 +105,7 @@ void run_rom(void) {
         poll_events(&ctx);
 
         /* Update keyboard data structure. */
-        keyboard = 0;
+        keyboard = 0x10;
 
         /* +---+---+---+---+ *
          * | 1 | 2 | 3 | C | *
@@ -127,22 +127,22 @@ void run_rom(void) {
          * | Z | X | C | V | *
          * +---+---+---+---+ */
 
-        if (is_key_down(&ctx, KEY_1)) keyboard |= 1 << 0x1;
-        if (is_key_down(&ctx, KEY_2)) keyboard |= 1 << 0x2;
-        if (is_key_down(&ctx, KEY_3)) keyboard |= 1 << 0x3;
-        if (is_key_down(&ctx, KEY_4)) keyboard |= 1 << 0xC;
-        if (is_key_down(&ctx, KEY_Q)) keyboard |= 1 << 0x4;
-        if (is_key_down(&ctx, KEY_W)) keyboard |= 1 << 0x5;
-        if (is_key_down(&ctx, KEY_E)) keyboard |= 1 << 0x6;
-        if (is_key_down(&ctx, KEY_R)) keyboard |= 1 << 0xD;
-        if (is_key_down(&ctx, KEY_A)) keyboard |= 1 << 0x7;
-        if (is_key_down(&ctx, KEY_S)) keyboard |= 1 << 0x8;
-        if (is_key_down(&ctx, KEY_D)) keyboard |= 1 << 0x9;
-        if (is_key_down(&ctx, KEY_F)) keyboard |= 1 << 0xE;
-        if (is_key_down(&ctx, KEY_Z)) keyboard |= 1 << 0xA;
-        if (is_key_down(&ctx, KEY_X)) keyboard |= 1 << 0x0;
-        if (is_key_down(&ctx, KEY_C)) keyboard |= 1 << 0xB;
-        if (is_key_down(&ctx, KEY_V)) keyboard |= 1 << 0xF;
+        if (is_key_down(&ctx, KEY_1)) keyboard = 0x1;
+        else if (is_key_down(&ctx, KEY_2)) keyboard = 0x2;
+        else if (is_key_down(&ctx, KEY_3)) keyboard = 0x3;
+        else if (is_key_down(&ctx, KEY_4)) keyboard = 0xC;
+        else if (is_key_down(&ctx, KEY_Q)) keyboard = 0x4;
+        else if (is_key_down(&ctx, KEY_W)) keyboard = 0x5;
+        else if (is_key_down(&ctx, KEY_E)) keyboard = 0x6;
+        else if (is_key_down(&ctx, KEY_R)) keyboard = 0xD;
+        else if (is_key_down(&ctx, KEY_A)) keyboard = 0x7;
+        else if (is_key_down(&ctx, KEY_S)) keyboard = 0x8;
+        else if (is_key_down(&ctx, KEY_D)) keyboard = 0x9;
+        else if (is_key_down(&ctx, KEY_F)) keyboard = 0xE;
+        else if (is_key_down(&ctx, KEY_Z)) keyboard = 0xA;
+        else if (is_key_down(&ctx, KEY_X)) keyboard = 0x0;
+        else if (is_key_down(&ctx, KEY_C)) keyboard = 0xB;
+        else if (is_key_down(&ctx, KEY_V)) keyboard = 0xF;
 
         /* Implements the step-through functionality. */
         if (
@@ -166,7 +166,7 @@ void run_rom(void) {
         }
         SDL_RenderPresent(ctx.renderer);
 
-        SDL_Delay(16);
+        SDL_Delay(1);
     }
 
 
@@ -358,21 +358,27 @@ eval_instruction(void) {
         switch (byte) {
 
         case 0x07:
+            v_reg[x] = delay_timer;
             break;
 
         case 0x0A:
+            if (keyboard == 0x10) pc -= 2;
+            else v_reg[x] = keyboard;
             break;
 
         case 0x15:
+            delay_timer = v_reg[x];
             break;
 
         case 0x18:
             break;
 
         case 0x1E:
+            i_reg += v_reg[x];
             break;
 
         case 0x29:
+            i_reg = v_reg[x] * 5;
             break;
 
         case 0x33:
@@ -394,9 +400,8 @@ eval_instruction(void) {
         break;
     }
 
-    /* print_instruction(pc);
+    print_instruction(pc);
     print_v_registers();
-    print_display(); */
 
     pc += 2;
 }
