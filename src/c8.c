@@ -114,6 +114,15 @@ void run_rom(void) {
             t = 0;
             if (delay_timer > 0) delay_timer--;
             if (sound_timer > 0) sound_timer--;
+
+            /* Update diplay. */
+            SDL_RenderClear(ctx.renderer);
+            for (i = 0; i < C8_DISPLAY_SIZE; i++) {
+                unsigned int color = display[i] != 0 ? 255 : 0;
+                SDL_SetRenderDrawColor(ctx.renderer, color, color, color, 255);
+                SDL_RenderDrawPoint(ctx.renderer, i % 64, (int) i / 64);
+            }
+            SDL_RenderPresent(ctx.renderer);
         }
 
         /* Update keyboard data structure. */
@@ -169,15 +178,6 @@ void run_rom(void) {
             exit(EXIT_FAILURE);
         }
 
-        /* Update diplay. */
-        SDL_RenderClear(ctx.renderer);
-        for (i = 0; i < C8_DISPLAY_SIZE; i++) {
-            unsigned int color = display[i] != 0 ? 255 : 0;
-            SDL_SetRenderDrawColor(ctx.renderer, color, color, color, 255);
-            SDL_RenderDrawPoint(ctx.renderer, i % 64, (int) i / 64);
-        }
-        SDL_RenderPresent(ctx.renderer);
-
         /* SDL_Delay(1); */
     }
 
@@ -212,19 +212,22 @@ eval_instruction(void) {
     switch(w) {
 
     case 0x0:
-        /* Clear screen */
-        if (addr == 0x0E0) {
-            int i;
+        switch (byte) {
+
+        case 0xE0:
             for (i = 0; i < C8_DISPLAY_SIZE; i++) {
                 display[i] = 0;
             }
-        /* return from subroutine */
-        } else if (addr == 0x0EE) {
+            break;
+
+        case 0xEE:
             if (sp <= 0) {
                 puts("Error: stack underflow");
                 exit(EXIT_FAILURE);
             }
             pc = call_stack[sp--];
+            break;
+
         }
         break;
 
@@ -299,25 +302,25 @@ eval_instruction(void) {
 
         /* Vx = Vx - Vy, VF = !overflow */
         case 0x5:
-            v_reg[0xF] = v_reg[x] > v_reg[y] ? 1 : 0;
+            v_reg[0xF] = v_reg[y] > v_reg[x] ? 0 : 1;
             v_reg[x] = v_reg[x] - v_reg[y];
             break;
 
         /* Vx = Vy >> 1, VF = bottom bit Vy */
         case 0x6:
-            v_reg[0xF] = (v_reg[y] & 0x1) == 0x1 ? 1 : 0;
+            v_reg[0xF] = v_reg[y] && 0x1;
             v_reg[x] = v_reg[y] >> 1;
             break;
 
         /* Vx = Vy - Vx, VF = !overflow */
         case 0x7:
-            v_reg[0xF] = v_reg[y] > v_reg[x] ? 1 : 0;
+            v_reg[0xF] = v_reg[x] > v_reg[y] ? 0 : 1;
             v_reg[x] = v_reg[y] - v_reg[x];
             break;
 
         /* Vx = Vy << 1, VF = top bit Vy */
         case 0xE:
-            v_reg[0xF] = (v_reg[y] & 0x80) == 0x80 ? 1 : 0;
+            v_reg[0xF] = (v_reg[y] >> 7) & 0x1;
             v_reg[x] = v_reg[y] << 1;
             break;
 
@@ -347,7 +350,7 @@ eval_instruction(void) {
 
     /* Vx = byte & rng */
     case 0xC:
-        v_reg[x] = byte & (rand() % 256);
+        v_reg[x] = byte & (rand() % 0x100);
         break;
 
     /* Reads 'z' byte of memory starting from I, draws sprite to 
