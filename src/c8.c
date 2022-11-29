@@ -11,7 +11,7 @@
 #define C8_FONT_DATA_SIZE (16 * 5)
 #define C8_DISPLAY_SIZE (64 * 32)
 
-#define C8_MAX_CALL_STACK (0x100)
+#define C8_MAX_CALL_STACK (16)
 
 sdl_context_t ctx = { 0 };
 
@@ -24,7 +24,7 @@ unsigned char v_reg[16] = { 0 };
 unsigned short i_reg = 0;
 
 unsigned short sp = 0;
-unsigned char call_stack[C8_MAX_CALL_STACK] = { 0 };
+unsigned short call_stack[C8_MAX_CALL_STACK] = { 0 };
 
 unsigned char delay_timer = 0;
 unsigned char sound_timer = 0;
@@ -63,6 +63,7 @@ void eval_instruction(void);
 /* Debug printing functions */
 void print_display(void);
 void print_instruction(unsigned int pc);
+void print_stack(void);
 void print_v_registers(void);
 
 /* CLI arg print functions */
@@ -203,6 +204,8 @@ eval_instruction(void) {
     unsigned int z = inst & 0x000F;
 
     print_instruction(pc);
+    print_v_registers();
+    print_stack();
 
     /* Increment program counter */
     pc += 2;
@@ -225,7 +228,8 @@ eval_instruction(void) {
                 puts("Error: stack underflow");
                 exit(EXIT_FAILURE);
             }
-            pc = call_stack[sp--];
+            sp--;
+            pc = call_stack[sp];
             break;
 
         }
@@ -242,7 +246,8 @@ eval_instruction(void) {
             puts("Error: stack overflow");
             exit(EXIT_FAILURE);
         }
-        call_stack[sp++] = pc;
+        call_stack[sp] = pc;
+        sp++;
         pc = addr;
         break;
 
@@ -445,7 +450,6 @@ eval_instruction(void) {
         break;
     }
 
-    print_v_registers();
     /*printf("RAM @ [0x%x]: 0x%x\n", 0x100, ram[0x100]);
     printf("RAM @ [0x%x]: 0x%x\n", 0x101, ram[0x101]);
     printf("RAM @ [0x%x]: 0x%x\n", 0x102, ram[0x102]); */
@@ -505,6 +509,16 @@ void print_instruction(unsigned int pc) {
             putchar('0');
         }
         printf("%x", ram[i]);
+    }
+    printf("\t\t@ 0x%x\t\tI = 0x%x", pc, i_reg);
+    putchar('\n');
+}
+
+void print_stack() {
+    unsigned int i;
+    printf("st:\t[");
+    for (i = 0; i <= sp; i++) {
+        printf(" 0x%x", call_stack[i]);
     }
     putchar('\n');
 }
