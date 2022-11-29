@@ -61,7 +61,7 @@ void load_rom(char* filename);
 void eval_instruction(void);
 
 /* Debug printing functions */
-void print_display(void);
+void print_i_register(void);
 void print_instruction(unsigned int pc);
 void print_stack(void);
 void print_v_registers(void);
@@ -204,8 +204,6 @@ eval_instruction(void) {
     unsigned int z = inst & 0x000F;
 
     print_instruction(pc);
-    print_v_registers();
-    print_stack();
 
     /* Increment program counter */
     pc += 2;
@@ -406,8 +404,8 @@ eval_instruction(void) {
             delay_timer = v_reg[x];
             break;
 
-        /* Sound timer */
         case 0x18:
+            sound_timer = v_reg[x];
             break;
 
         case 0x1E:
@@ -419,11 +417,9 @@ eval_instruction(void) {
             break;
 
         case 0x33:
-            j = v_reg[x];
-            for (i = 0; i < 3; i++) {
-                ram[i_reg + (2 - i)] = j % 10;
-                j = (unsigned char) (j / 10);
-            }
+            ram[i_reg + 0] = (v_reg[x] / 100) % 10;
+            ram[i_reg + 1] = (v_reg[x] / 10) % 10;
+            ram[i_reg + 2] = (v_reg[x] / 1) % 10;
             break;
 
         case 0x55:
@@ -450,9 +446,12 @@ eval_instruction(void) {
         break;
     }
 
-    /*printf("RAM @ [0x%x]: 0x%x\n", 0x100, ram[0x100]);
+    print_i_register(); putchar('\n');
+    print_v_registers(); putchar('\n');
+    print_stack(); putchar('\n');
+    printf("RAM @ [0x%x]: 0x%x\n", 0x100, ram[0x100]);
     printf("RAM @ [0x%x]: 0x%x\n", 0x101, ram[0x101]);
-    printf("RAM @ [0x%x]: 0x%x\n", 0x102, ram[0x102]); */
+    printf("RAM @ [0x%x]: 0x%x\n", 0x102, ram[0x102]);
 
 }
 
@@ -489,18 +488,6 @@ void load_rom(char* filename) {
     }
 }
 
-void print_display() {
-    int i;
-    printf("dis:\t");
-    for (i = 0; i < C8_DISPLAY_SIZE; i++) {
-        putchar(display[i] ? '#' : '.');
-        if (i % 64 == 63) { 
-            putchar('\n');
-            if (i != C8_DISPLAY_SIZE - 1) putchar('\t');
-        }
-    }
-}
-
 void print_instruction(unsigned int pc) {
     unsigned int i;
     printf("in:\t");
@@ -510,8 +497,11 @@ void print_instruction(unsigned int pc) {
         }
         printf("%x", ram[i]);
     }
-    printf("\t\t@ 0x%x\t\tI = 0x%x", pc, i_reg);
-    putchar('\n');
+    printf("\t\t@ 0x%x", pc);
+}
+
+void print_i_register(void) {
+    printf("\t\tI = 0x%x", i_reg);
 }
 
 void print_stack() {
@@ -520,7 +510,6 @@ void print_stack() {
     for (i = 0; i <= sp; i++) {
         printf(" 0x%x", call_stack[i]);
     }
-    putchar('\n');
 }
 
 void print_v_registers(void) {
@@ -529,7 +518,6 @@ void print_v_registers(void) {
     for (i = 0; i < 16; i++) {
         printf("V%x = %x ", i, v_reg[i]);
     }
-    putchar('\n');
 }
 
 void print_usage(void) {
